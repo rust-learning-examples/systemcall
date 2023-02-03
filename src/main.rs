@@ -1,5 +1,6 @@
+mod api;
+
 use clap::{Parser, Subcommand};
-use std::net::SocketAddr;
 
 #[derive(Parser)]
 #[command(author, version, about, long_about = None)]
@@ -27,13 +28,7 @@ struct StartArgs {
 }
 
 
-use axum::{
-    Router,
-    routing::{get, post},
-    http::StatusCode,
-    response::IntoResponse,
-    Json
-};
+use axum::{Router, routing, response};
 
 #[tokio::main]
 async fn main() {
@@ -45,28 +40,17 @@ async fn main() {
             let addr = format!("{}:{}", args.host, args.port);
             tracing::debug!("listening on {}", addr);
 
-            let app = Router::new()
-                // `GET /` goes to `root`
-                .route("/", get(|| async { "Hello, World!" }))
-                // `POST /users` goes to `create_user`
-                // .route("/notifications", post(|| -> impl IntoResponse {
-                //     use notify_rust::Notification;
-                //     Notification::new()
-                //         .summary("Firefox News")
-                //         .body("This will almost look like a real firefox notification.")
-                //         .icon("firefox")
-                //         .show().unwrap();
-                //     StatusCode::CREATED
-                // }))
-                ;
+            let api_router = create_api_route();
 
             let addr = addr.parse().expect("Unable to parse socket address");
-            axum::Server::bind(&addr).serve(app.into_make_service()).await.unwrap();
+            axum::Server::bind(&addr).serve(api_router.into_make_service()).await.unwrap();
         },
         _ => ()
     }
 }
 
-async fn root() -> &'static str {
-    "Hello, World!"
+fn create_api_route() -> Router {
+    Router::new()
+        .route("/", routing::get(|| async { response::Html("Hello, World!") }))
+        .route("/notifications", routing::post(api::notifications::create))
 }
